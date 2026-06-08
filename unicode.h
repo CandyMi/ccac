@@ -1,3 +1,14 @@
+/*
+**  LICENSE: BSD
+**  Author: CandyMi[https://github.com/candymi]
+**
+**  UTF-8 ↔ UCS-4 codec.  Self-contained, zero external dependencies.
+**
+**  Compliant with Unicode 17.0 / RFC 3629.
+**    - 1–4 byte sequences, overlong rejection, surrogate rejection
+**    - ASCII fast path, 256-byte lookup table, unrolled switch
+**    - Branchless encoder, fall-through decoder
+*/
 #ifndef CCAC_UNICODE_H
 #define CCAC_UNICODE_H
 
@@ -18,7 +29,7 @@
 /* Lookup tables indexed by (bytes - 1). */
 static const uint8_t  lead_mark[4]  = { 0x00, 0xC0, 0xE0, 0xF0 };
 static const uint8_t  lead_shift[4] = {    0,    6,   12,   18 };
-const static uint32_t cp_ranges[5]  = { 0, 0, 0x80, 0x800, 0x10000 };
+static const uint32_t cp_ranges[5]  = { 0, 0, 0x80, 0x800, 0x10000 };
 /*
   * Lookup table: number of bytes in the sequence for each possible first byte.
   * 0   = invalid first byte (continuation bytes 0x80-0xBF,

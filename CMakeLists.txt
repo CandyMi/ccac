@@ -139,10 +139,12 @@ add_custom_target(check
   DEPENDS test_unicode test_ccac test_ccac_robust test_ccac_stress gen_stress_data
   COMMENT "All test targets built.  Run: ctest --test-dir ${CMAKE_BINARY_DIR} --output-on-failure")
 
-# install headers (optional)
+# install headers — ccac own + ccalg submodule (flat, same dir so #include "..." resolves)
 include(GNUInstallDirs)
+set(CCAC_INSTALL_DIR ${CMAKE_INSTALL_INCLUDEDIR}/ccac)
+
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ccac
+  DESTINATION ${CCAC_INSTALL_DIR}
   FILES_MATCHING
   PATTERN "*.h"
   PATTERN "build" EXCLUDE
@@ -150,14 +152,20 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/
   PATTERN "bench" EXCLUDE
   PATTERN "scripts" EXCLUDE
   PATTERN "3rd" EXCLUDE
-  PATTERN ".git" EXCLUDE)
+  PATTERN ".git" EXCLUDE
+  REGEX "/[.]" EXCLUDE)
+
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/3rd/ccalg/include/
+  DESTINATION ${CCAC_INSTALL_DIR}
+  FILES_MATCHING
+  PATTERN "*.h")
 
 # ── summary ─────────────────────────────────────────────────────────────
 message(STATUS "")
 message(STATUS "ccac ${PROJECT_VERSION}")
 message(STATUS "  Build type : ${CMAKE_BUILD_TYPE}")
 message(STATUS "  C standard  : C${CMAKE_C_STANDARD}")
-message(STATUS "  Install dir : ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}/ccac")
+message(STATUS "  Install dir : ${CMAKE_INSTALL_PREFIX}/${CCAC_INSTALL_DIR}")
 message(STATUS "")
 message(STATUS "  Targets:")
 message(STATUS "    make test_ccac / test_ccac_robust / test_ccac_stress")
