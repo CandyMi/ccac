@@ -262,7 +262,7 @@ sequenceDiagram
 | 函数 | 方向 |
 |------|------|
 | `ccac_unicode_to_codepoint(str, len, &val)` | UTF-8 → UCS-4 |
-| `ccac_codepoint_to_utf8(val, str, &len)` | UCS-4 → UTF-8 |
+| `ccac_codepoint_to_unicode(val, str, &len)` | UCS-4 → UTF-8 |
 
 性能设计：ASCII 快速路径、256 字节首字分类查表、fall-through switch 展开续字节处理。遵循 Unicode 17.0 / RFC 3629 规范。
 

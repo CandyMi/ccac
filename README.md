@@ -262,7 +262,7 @@ Self-contained UTF-8 ↔ UCS-4 implementation:
 | Function | Direction |
 |----------|-----------|
 | `ccac_unicode_to_codepoint(str, len, &val)` | UTF-8 → UCS-4 |
-| `ccac_codepoint_to_utf8(val, str, &len)` | UCS-4 → UTF-8 |
+| `ccac_codepoint_to_unicode(val, str, &len)` | UCS-4 → UTF-8 |
 
 Performance design: ASCII fast path, 256-byte first-byte classification table, unrolled continuation-byte processing via fall-through switch.
 
