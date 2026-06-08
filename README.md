@@ -130,7 +130,7 @@ typedef struct ccac_match {
 | | `ccac.h` | `ccac1.h` |
 |---|---|---|
 | Child container | `cchashmap` (hash map) | `ccmap` (red-black tree) |
-| Lookup complexity | O(1) average | O(log σ) |
+| Lookup complexity | O(1) average | O(log n) |
 | Memory | Bucket array (auto-resize) | Zero internal allocation |
 | Best for | Large alphabets, raw speed | Memory-constrained, small node counts |
 
@@ -172,13 +172,79 @@ ccac/
 
 ## How It Works
 
-### Data flow
+### Architecture
 
+```mermaid
+flowchart LR
+    A["UTF-8 Text"] --> B["unicode.h<br/>codec"]
+    B -->|"UCS-4"| C["AC Automaton"]
+    D["Dictionary"] --> E["Build Trie"]
+    E --> F["Failure Links<br/>(BFS)"]
+    F --> C
+    C --> G["Matches<br/>(offsets)"]
 ```
-UTF-8 text ──► unicode.h ──► UCS-4 codepoints ──► AC automaton ──► matches
-                  │                                      │
-                  │  ccac_unicode_to_codepoint()          │  trie nodes indexed by codepoint
-                  │                                      │  fail links via BFS
+
+### Trie & Failure Links
+
+Example: dictionary `{he, she, his, hers}`
+
+```mermaid
+flowchart TD
+    R(("root"))
+    R -->|"h"| H(("h"))
+    R -->|"s"| S(("s"))
+    H -->|"e ●"| HE(("he"))
+    H -->|"i"| HI(("hi"))
+    HI -->|"s ●"| HIS(("his"))
+    S -->|"h"| SH(("sh"))
+    SH -->|"e ●"| SHE(("she"))
+    HE -->|"r"| HER(("her"))
+    HER -->|"s ●"| HERS(("hers"))
+
+    H -.->|"fail"| R
+    S -.->|"fail"| R
+    HE -.->|"fail"| SHE
+    SH -.->|"fail"| H
+    SHE -.->|"fail"| HE
+    HIS -.->|"fail"| SHE
+    HER -.->|"fail"| S
+    HERS -.->|"fail"| SHE
+
+    style HE fill:#e44,stroke:#333,color:#fff
+    style SHE fill:#e44,stroke:#333,color:#fff
+    style HIS fill:#e44,stroke:#333,color:#fff
+    style HERS fill:#e44,stroke:#333,color:#fff
+```
+
+**●** = terminal node (end of a dictionary word). Dashed lines = failure links.
+
+### Search Example
+
+Scanning `"ushers"` against the trie above:
+
+```mermaid
+sequenceDiagram
+    participant T as Text
+    participant AC as AC Automaton
+    participant M as Matches
+    
+    T->>AC: pos=0 'u'
+    AC-->>AC: root → no 'u' → stay at root
+    
+    T->>AC: pos=1 's' → root child 's'
+    T->>AC: pos=2 'h' → s→h (node sh)
+    
+    T->>AC: pos=3 'e'
+    AC-->>AC: sh→'e' ✦ she (terminal!)
+    M-->>M: ✅ [1,4) = "she"
+    AC-->>AC: she→fail→he (terminal!)
+    M-->>M: ✅ [2,4) = "he"
+    
+    T->>AC: pos=4 'r' → he→r (node her)
+    
+    T->>AC: pos=5 's'
+    AC-->>AC: her→'s' ✦ hers (terminal!)
+    M-->>M: ✅ [2,6) = "hers"
 ```
 
 ### Trie structure

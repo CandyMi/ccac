@@ -130,7 +130,7 @@ typedef struct ccac_match {
 | | `ccac.h` | `ccac1.h` |
 |---|---|---|
 | 子节点容器 | `cchashmap`（哈希表） | `ccmap`（红黑树） |
-| 查找复杂度 | O(1) 平均 | O(log σ) |
+| 查找复杂度 | O(1) 平均 | O(log n) |
 | 内存分配 | 桶数组（自动扩容） | 零内部分配 |
 | 适用场景 | 字符集大、追求速度 | 内存受限、节点数少 |
 
@@ -172,13 +172,79 @@ ccac/
 
 ## 工作原理
 
-### 数据流
+### 架构
 
+```mermaid
+flowchart LR
+    A["UTF-8 文本"] --> B["unicode.h<br/>编解码器"]
+    B -->|"UCS-4"| C["AC 自动机"]
+    D["词表"] --> E["构建 Trie"]
+    E --> F["失败链接<br/>(BFS)"]
+    F --> C
+    C --> G["匹配<br/>(偏移量)"]
 ```
-UTF-8 文本 ──► unicode.h ──► UCS-4 码点 ──► AC 自动机 ──► 匹配结果
-                  │                              │
-                  │ ccac_unicode_to_codepoint()  │ Trie 节点按码点索引
-                  │                              │ 失败链接通过 BFS 构建
+
+### Trie 与失败链接
+
+以字典 `{he, she, his, hers}` 为例：
+
+```mermaid
+flowchart TD
+    R(("root"))
+    R -->|"h"| H(("h"))
+    R -->|"s"| S(("s"))
+    H -->|"e ●"| HE(("he"))
+    H -->|"i"| HI(("hi"))
+    HI -->|"s ●"| HIS(("his"))
+    S -->|"h"| SH(("sh"))
+    SH -->|"e ●"| SHE(("she"))
+    HE -->|"r"| HER(("her"))
+    HER -->|"s ●"| HERS(("hers"))
+
+    H -.->|"fail"| R
+    S -.->|"fail"| R
+    HE -.->|"fail"| SHE
+    SH -.->|"fail"| H
+    SHE -.->|"fail"| HE
+    HIS -.->|"fail"| SHE
+    HER -.->|"fail"| S
+    HERS -.->|"fail"| SHE
+
+    style HE fill:#e44,stroke:#333,color:#fff
+    style SHE fill:#e44,stroke:#333,color:#fff
+    style HIS fill:#e44,stroke:#333,color:#fff
+    style HERS fill:#e44,stroke:#333,color:#fff
+```
+
+**●** = 终端节点（字典词的结束）。虚线 = 失败链接。
+
+### 搜索示例
+
+在文本 `"ushers"` 中搜索上述字典：
+
+```mermaid
+sequenceDiagram
+    participant T as 文本
+    participant AC as AC 自动机
+    participant M as 匹配结果
+    
+    T->>AC: pos=0 'u'
+    AC-->>AC: root → 无 'u' → 停在 root
+    
+    T->>AC: pos=1 's' → root 子节点 's'
+    T->>AC: pos=2 'h' → s→h (sh 节点)
+    
+    T->>AC: pos=3 'e'
+    AC-->>AC: sh→'e' ✦ she (终端!)
+    M-->>M: ✅ [1,4) = "she"
+    AC-->>AC: she→fail→he (终端!)
+    M-->>M: ✅ [2,4) = "he"
+    
+    T->>AC: pos=4 'r' → he→r (her 节点)
+    
+    T->>AC: pos=5 's'
+    AC-->>AC: her→'s' ✦ hers (终端!)
+    M-->>M: ✅ [2,6) = "hers"
 ```
 
 ### Trie 结构
