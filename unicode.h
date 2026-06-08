@@ -13,6 +13,17 @@
 #define CCAC_UNICODE_H
 
 /*
+ * Branch prediction hint — marks error/edge paths that are almost never
+ * taken in valid-UTF-8 input.  Compiler lays out the hot (taken) path
+ * inline and moves the error handling out of line.
+ */
+#if defined(__GNUC__) || defined(__clang__)
+  #define CCAC_UNLIKELY(x) __builtin_expect(!!(x), 0)
+#else
+  #define CCAC_UNLIKELY(x) (x)
+#endif
+
+/*
  * Portable fallthrough hint — suppresses -Wimplicit-fallthrough (GCC/Clang)
  * and C5260 (MSVC).
  */
@@ -71,7 +82,7 @@ static const uint8_t seq_len[256] = {
 static inline
 int ccac_unicode_to_codepoint(const char *str, int len, uint32_t *val)
 {
-  if (!str || len <= 0 || !val) return 0;
+  if (CCAC_UNLIKELY(!str || len <= 0 || !val)) return 0;
 
   const uint8_t* p = (const uint8_t*)str;
 
@@ -82,8 +93,8 @@ int ccac_unicode_to_codepoint(const char *str, int len, uint32_t *val)
   }
 
   int bytes = seq_len[p[0]];
-  if (bytes < 2) return 0;              /* invalid first byte (0) or ASCII (1) */
-  if ((size_t)len < (size_t)bytes) return 0; /* incomplete sequence */
+  if (CCAC_UNLIKELY(bytes < 2)) return 0;  /* invalid first byte (0) or ASCII (1) */
+  if (CCAC_UNLIKELY((size_t)len < (size_t)bytes)) return 0; /* incomplete sequence */
 
   uint32_t code;
   /*
@@ -93,20 +104,20 @@ int ccac_unicode_to_codepoint(const char *str, int len, uint32_t *val)
    */
   switch (bytes) {
     case 4:
-      if (((p[1] ^ 0x80) | (p[2] ^ 0x80) | (p[3] ^ 0x80)) & 0xC0) return 0;
+      if (CCAC_UNLIKELY(((p[1] ^ 0x80) | (p[2] ^ 0x80) | (p[3] ^ 0x80)) & 0xC0)) return 0;
       code  = (uint32_t)(p[0] & 0x07) << 18;
       code |= (uint32_t)(p[1] & 0x3F) << 12;
       code |= (uint32_t)(p[2] & 0x3F) << 6;
       code |= (uint32_t)(p[3] & 0x3F);
       break;
     case 3:
-      if (((p[1] ^ 0x80) | (p[2] ^ 0x80)) & 0xC0) return 0;
+      if (CCAC_UNLIKELY(((p[1] ^ 0x80) | (p[2] ^ 0x80)) & 0xC0)) return 0;
       code  = (uint32_t)(p[0] & 0x0F) << 12;
       code |= (uint32_t)(p[1] & 0x3F) << 6;
       code |= (uint32_t)(p[2] & 0x3F);
       break;
     default: /* 2 */
-      if ((p[1] & 0xC0) != 0x80) return 0;
+      if (CCAC_UNLIKELY((p[1] & 0xC0) != 0x80)) return 0;
       code  = (uint32_t)(p[0] & 0x1F) << 6;
       code |= (uint32_t)(p[1] & 0x3F);
       break;
@@ -114,10 +125,10 @@ int ccac_unicode_to_codepoint(const char *str, int len, uint32_t *val)
 
   /* Overlong encoding check (minima: 2-byte → U+0080, 3-byte → U+0800, 4-byte → U+10000) */
   /* Beyond Unicode maximum (e.g. F4 90 80 80 → U+110000) */
-  if (code < cp_ranges[bytes] || code > 0x10FFFF)  return 0;
+  if (CCAC_UNLIKELY(code < cp_ranges[bytes] || code > 0x10FFFF)) return 0;
 
   /* Surrogate halves (U+D800–U+DFFF) are invalid in UTF-8 */
-  if (code >= 0xD800 && code <= 0xDFFF) return 0;
+  if (CCAC_UNLIKELY(code >= 0xD800 && code <= 0xDFFF)) return 0;
 
   *val = code;
   return bytes;
@@ -141,12 +152,12 @@ int ccac_unicode_to_codepoint(const char *str, int len, uint32_t *val)
 static inline
 bool ccac_codepoint_to_unicode(uint32_t val, char str[4], int *len)
 {
-  if (!str || !len) return false;
+  if (CCAC_UNLIKELY(!str || !len)) return false;
 
   /* Unicode range caps at U+10FFFF. */
-  if (val > 0x10FFFF) return false;
+  if (CCAC_UNLIKELY(val > 0x10FFFF)) return false;
   /* Surrogates are not valid Unicode scalar values. */
-  if (val >= 0xD800 && val <= 0xDFFF) return false;
+  if (CCAC_UNLIKELY(val >= 0xD800 && val <= 0xDFFF)) return false;
 
   uint8_t *p = (uint8_t *)str;
 
