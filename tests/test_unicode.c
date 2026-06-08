@@ -283,7 +283,7 @@ void test_decode_null_edge(void) {
 }
 
 /* ════════════════════════════════════════════════════════════════════════
-**  ccac_codepoint_to_utf8  —  UCS-4 → UTF-8
+**  ccac_codepoint_to_unicode  —  UCS-4 → UTF-8
 ** ════════════════════════════════════════════════════════════════════════ */
 
 /* ── 1-byte: ASCII ────────────────────────────────────────────────────── */
@@ -293,9 +293,9 @@ void test_encode_ascii(void) {
 
   char buf[4]; int len;
 
-  T(ccac_codepoint_to_utf8(0x41, buf, &len) && len == 1 && buf[0] == 'A');
-  T(ccac_codepoint_to_utf8(0x00, buf, &len) && len == 1 && buf[0] == '\x00');
-  T(ccac_codepoint_to_utf8(0x7F, buf, &len) && len == 1 && buf[0] == '\x7F');
+  T(ccac_codepoint_to_unicode(0x41, buf, &len) && len == 1 && buf[0] == 'A');
+  T(ccac_codepoint_to_unicode(0x00, buf, &len) && len == 1 && buf[0] == '\x00');
+  T(ccac_codepoint_to_unicode(0x7F, buf, &len) && len == 1 && buf[0] == '\x7F');
 }
 
 /* ── 2-byte ───────────────────────────────────────────────────────────── */
@@ -306,19 +306,19 @@ void test_encode_2byte(void) {
   char buf[4]; int len;
 
   /* U+00A2 (¢) = C2 A2 */
-  T(ccac_codepoint_to_utf8(0xA2, buf, &len)
+  T(ccac_codepoint_to_unicode(0xA2, buf, &len)
     && len == 2 && buf[0] == '\xC2' && buf[1] == '\xA2');
 
   /* U+00A9 (©) = C2 A9 */
-  T(ccac_codepoint_to_utf8(0xA9, buf, &len)
+  T(ccac_codepoint_to_unicode(0xA9, buf, &len)
     && len == 2 && buf[0] == '\xC2' && buf[1] == '\xA9');
 
   /* boundary: min 2-byte U+0080 = C2 80 */
-  T(ccac_codepoint_to_utf8(0x80, buf, &len)
+  T(ccac_codepoint_to_unicode(0x80, buf, &len)
     && len == 2 && buf[0] == '\xC2' && buf[1] == '\x80');
 
   /* boundary: max 2-byte U+07FF = DF BF */
-  T(ccac_codepoint_to_utf8(0x7FF, buf, &len)
+  T(ccac_codepoint_to_unicode(0x7FF, buf, &len)
     && len == 2 && buf[0] == '\xDF' && buf[1] == '\xBF');
 }
 
@@ -330,14 +330,14 @@ void test_encode_3byte(void) {
   char buf[4]; int len;
 
   /* U+4E2D (中) = E4 B8 AD */
-  T(ccac_codepoint_to_utf8(0x4E2D, buf, &len)
+  T(ccac_codepoint_to_unicode(0x4E2D, buf, &len)
     && len == 3
     && (unsigned char)buf[0] == 0xE4
     && (unsigned char)buf[1] == 0xB8
     && (unsigned char)buf[2] == 0xAD);
 
   /* boundary: min 3-byte U+0800 = E0 A0 80 */
-  T(ccac_codepoint_to_utf8(0x800, buf, &len)
+  T(ccac_codepoint_to_unicode(0x800, buf, &len)
     && len == 3
     && (unsigned char)buf[0] == 0xE0
     && (unsigned char)buf[1] == 0xA0
@@ -352,7 +352,7 @@ void test_encode_4byte(void) {
   char buf[4]; int len;
 
   /* U+1F600 (😀) = F0 9F 98 80 */
-  T(ccac_codepoint_to_utf8(0x1F600, buf, &len)
+  T(ccac_codepoint_to_unicode(0x1F600, buf, &len)
     && len == 4
     && (unsigned char)buf[0] == 0xF0
     && (unsigned char)buf[1] == 0x9F
@@ -360,7 +360,7 @@ void test_encode_4byte(void) {
     && (unsigned char)buf[3] == 0x80);
 
   /* boundary: max U+10FFFF = F4 8F BF BF */
-  T(ccac_codepoint_to_utf8(0x10FFFF, buf, &len)
+  T(ccac_codepoint_to_unicode(0x10FFFF, buf, &len)
     && len == 4
     && (unsigned char)buf[0] == 0xF4
     && (unsigned char)buf[1] == 0x8F
@@ -376,16 +376,16 @@ void test_encode_invalid(void) {
   char buf[4]; int len;
 
   /* surrogate: U+D800 */
-  T(ccac_codepoint_to_utf8(0xD800, buf, &len) == false);
+  T(ccac_codepoint_to_unicode(0xD800, buf, &len) == false);
 
   /* surrogate: U+DFFF */
-  T(ccac_codepoint_to_utf8(0xDFFF, buf, &len) == false);
+  T(ccac_codepoint_to_unicode(0xDFFF, buf, &len) == false);
 
   /* beyond max: U+110000 */
-  T(ccac_codepoint_to_utf8(0x110000, buf, &len) == false);
+  T(ccac_codepoint_to_unicode(0x110000, buf, &len) == false);
 
   /* well beyond: U+FFFFFFFF */
-  T(ccac_codepoint_to_utf8(0xFFFFFFFF, buf, &len) == false);
+  T(ccac_codepoint_to_unicode(0xFFFFFFFF, buf, &len) == false);
 }
 
 /* ── null / edge arguments ────────────────────────────────────────────── */
@@ -396,14 +396,14 @@ void test_encode_null_edge(void) {
   int len;
 
   /* NULL str */
-  T(ccac_codepoint_to_utf8(0x41, NULL, &len) == false);
+  T(ccac_codepoint_to_unicode(0x41, NULL, &len) == false);
 
   /* NULL len */
   char buf[4];
-  T(ccac_codepoint_to_utf8(0x41, buf, NULL) == false);
+  T(ccac_codepoint_to_unicode(0x41, buf, NULL) == false);
 
   /* both NULL */
-  T(ccac_codepoint_to_utf8(0x41, NULL, NULL) == false);
+  T(ccac_codepoint_to_unicode(0x41, NULL, NULL) == false);
 }
 
 /* ════════════════════════════════════════════════════════════════════════
@@ -426,7 +426,7 @@ void test_roundtrip(void) {
   for (int i = 0; i < n_cp; i++) {
     uint32_t orig = codepoints[i];
     char buf[4]; int enc_len;
-    T(ccac_codepoint_to_utf8(orig, buf, &enc_len));
+    T(ccac_codepoint_to_unicode(orig, buf, &enc_len));
 
     uint32_t decoded; int dec_len;
     dec_len = ccac_unicode_to_codepoint(buf, enc_len, &decoded);
@@ -451,7 +451,7 @@ void test_fuzz_exhaustive(void) {
   /* sample every N-th codepoint across the valid range */
   /* 1-byte range (0x00–0x7F): check every point */
   for (uint32_t cp = 0x00; cp <= 0x7F; cp++) {
-    T(ccac_codepoint_to_utf8(cp, buf, &enc_len));
+    T(ccac_codepoint_to_unicode(cp, buf, &enc_len));
     dec_len = ccac_unicode_to_codepoint(buf, enc_len, &decoded);
     if (dec_len == enc_len && decoded == cp) ok++; else bad++;
   }
@@ -460,7 +460,7 @@ void test_fuzz_exhaustive(void) {
   /* 2-byte range (0x80–0x7FF): step 256 */
   step = 256;
   for (uint32_t cp = 0x80; cp <= 0x7FF; cp += step) {
-    T(ccac_codepoint_to_utf8(cp, buf, &enc_len));
+    T(ccac_codepoint_to_unicode(cp, buf, &enc_len));
     dec_len = ccac_unicode_to_codepoint(buf, enc_len, &decoded);
     if (dec_len == enc_len && decoded == cp) ok++; else bad++;
   }
@@ -470,7 +470,7 @@ void test_fuzz_exhaustive(void) {
   step = 4096;
   for (uint32_t cp = 0x800; cp <= 0xFFFF; cp += step) {
     if (cp >= 0xD800 && cp <= 0xDFFF) continue;
-    T(ccac_codepoint_to_utf8(cp, buf, &enc_len));
+    T(ccac_codepoint_to_unicode(cp, buf, &enc_len));
     dec_len = ccac_unicode_to_codepoint(buf, enc_len, &decoded);
     if (dec_len == enc_len && decoded == cp) ok++; else bad++;
   }
@@ -479,7 +479,7 @@ void test_fuzz_exhaustive(void) {
   /* 4-byte range (0x10000–0x10FFFF): step 131072 */
   step = 131072;
   for (uint32_t cp = 0x10000; cp <= 0x10FFFF; cp += step) {
-    T(ccac_codepoint_to_utf8(cp, buf, &enc_len));
+    T(ccac_codepoint_to_unicode(cp, buf, &enc_len));
     dec_len = ccac_unicode_to_codepoint(buf, enc_len, &decoded);
     if (dec_len == enc_len && decoded == cp) ok++; else bad++;
   }

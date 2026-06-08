@@ -142,7 +142,7 @@ int ccac_unicode_to_codepoint(const char *str, int len, uint32_t *val)
  *             (surrogates, > U+10FFFF, or null parameters).
  */
 static inline
-bool ccac_codepoint_to_utf8(uint32_t val, char str[4], int *len)
+bool ccac_codepoint_to_unicode(uint32_t val, char str[4], int *len)
 {
   if (!str || !len) return false;
 
