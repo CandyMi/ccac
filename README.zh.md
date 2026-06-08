@@ -9,14 +9,14 @@
 
 ## 特性
 
-- **O(m) 搜索时间** — 与字典大小无关，仅取决于文本长度
-- **原生 UTF-8 支持** — 内置 `UCS-4` 编解码器，正确处理中文等多字节字符
-- **双后端容器** — 哈希表 (`ccac.h`) 或红黑树 (`ccac1.h`)，`ABI` 兼容可按需替换
+- **O(n) 搜索时间** — 与字典大小无关，仅取决于文本长度
+- **原生 UTF-8 支持** — 内置 UCS-4 编解码器，正确处理中文、emoji 等多字节字符
+- **双后端容器** — 哈希表 (`ccac.h`) 或红黑树 (`ccac1.h`)，ABI 兼容可按需替换
 - **两种搜索模式** — 记录模式（收集所有匹配）和检测模式（仅判断是否存在）
 - **增量构建** — 支持 `ccac_build` 批量构建和 `ccac_add` 动态追加词汇
 - **自定义分隔符** — 词表支持任意分隔符（换行、逗号、竖线等）
-- **零外部依赖** — 仅依赖 `C` 标准库，容器已全部内置
-- **跨平台** — `C` / `C++` / `GNU C` / `clang` / `MSVC` 均可编译
+- **零外部依赖** — 仅依赖 C 标准库，容器通过 git submodule 引入
+- **跨平台** — C99+ / C11 / C++ / MSVC，`-Wall -Wextra` 零警告
 
 ## 快速开始
 
@@ -81,11 +81,12 @@ cmake --install build --prefix /usr/local
 ### 手动编译
 
 ```bash
+INC="-I. -I3rd/ccalg/include"
+
 # 编解码器测试
 cc -std=c99 -Wall -Wextra -I. -o test_unicode tests/test_unicode.c && ./test_unicode
 
-# 单元测试（需要 ccalg 子模块）
-INC="-I. -I3rd/ccalg/include"
+# 单元测试
 cc -std=c99 -Wall -Wextra $INC -o test_ccac tests/test_ccac.c && ./test_ccac
 
 # 鲁棒性测试
@@ -109,8 +110,20 @@ cc -std=c99 -O2 -Wall -Wextra $INC -o test_ccac_stress tests/test_ccac_stress.c
 | `ccac_find(ac, text, len, matches, &nmatch)` | 搜索文本 |
 
 `ccac_find` 两种模式：
-- `matches != NULL` — 记录模式，写入最多 `*nmatch` 条结果
-- `matches == NULL` — 检测模式，仅返回是否存在匹配
+
+| `matches` | 行为 |
+|-----------|------|
+| `!= NULL` | 记录模式 — 写入最多 `*nmatch` 条结果到缓冲区 |
+| `== NULL` | 检测模式 — 命中即返回，`*nmatch` = 1 找到 / 0 未找到 |
+
+### 匹配结果
+
+```c
+typedef struct ccac_match {
+    size_t s;  // 原文中的起始字节偏移
+    size_t e;  // 结束字节偏移 (e - s = 字节长度)
+} ccac_match_t;
+```
 
 ## ccac vs ccac1
 
@@ -121,32 +134,71 @@ cc -std=c99 -O2 -Wall -Wextra $INC -o test_ccac_stress tests/test_ccac_stress.c
 | 内存分配 | 桶数组（自动扩容） | 零内部分配 |
 | 适用场景 | 字符集大、追求速度 | 内存受限、节点数少 |
 
-两者类型和函数签名完全一致，可互换使用。
+两者类型和函数签名完全一致，更换 `#include` 即可切换。
 
 ## 文件结构
 
 ```
 ccac/
 ├── ccac.h           # 哈希表变体
-├── ccac1.h          # 红黑树变体
-├── unicode.h        # UTF-8 ↔ UCS-4 编解码器
+├── ccac1.h          # 红黑树变体（ABI 兼容）
+├── unicode.h        # UTF-8 ↔ UCS-4 编解码器（零依赖）
 ├── 3rd/ccalg/       # [git submodule] 第三方容器库
+├── CMakeLists.txt   # 构建系统
+├── AGENTS.md        # AI Agent 规范参考
 ├── tests/           # 测试套件
+│   ├── test_ccac.c
+│   ├── test_ccac_robust.c
+│   ├── test_ccac_stress.c
+│   └── test_unicode.c
 ├── bench/           # 性能对比
-└── scripts/         # 数据生成脚本
+│   └── bench_ccac.c
+└── scripts/         # 数据生成
+    ├── gen_words.py
+    └── gen_stress_text.py
 ```
 
 ## 性能
 
-`50,000` 中文词 / `3MB` 文本（`MacBook Pro intel`）：
+50,000 中文词 / 3 MB 文本（Apple M1）：
 
 | 指标 | 数值 |
 |------|------|
 | 构建速度 | 469,867 词/秒 |
-| 搜索速度 | 63.2 MB/s |
+| 搜索吞吐量 | 63.2 MB/s |
 | 召回率 | 100% |
-| vs naive(strstr) 投影 | **2,357×** 更快 |
-| vs PCRE2 | **1.6×** 更快 |
+| vs naive (strstr) 投影 | **2,357×** 更快 |
+| vs PCRE2（封顶） | **1.6×** 更快 |
+
+## 工作原理
+
+### 数据流
+
+```
+UTF-8 文本 ──► unicode.h ──► UCS-4 码点 ──► AC 自动机 ──► 匹配结果
+                  │                              │
+                  │ ccac_unicode_to_codepoint()  │ Trie 节点按码点索引
+                  │                              │ 失败链接通过 BFS 构建
+```
+
+### Trie 结构
+
+每个节点存储一个 UCS-4 码点。终端节点记录字典词的原始 UTF-8 字节长度，用于 O(1) 计算匹配起始偏移。子节点查找通过哈希表或红黑树实现。
+
+### 失败链接
+
+从根节点一次 BFS 构建：对每个节点 `v` 及其在码点 `x` 上的子节点 `c`，沿 `v->fail` 上溯直到找到含 `x` 子节点的节点（或根），然后设置 `c->fail`。总耗时 O(节点数)。
+
+### unicode.h 编解码器
+
+自包含的 UTF-8 ↔ UCS-4 实现：
+
+| 函数 | 方向 |
+|------|------|
+| `ccac_unicode_to_codepoint(str, len, &val)` | UTF-8 → UCS-4 |
+| `ccac_codepoint_to_utf8(val, str, &len)` | UCS-4 → UTF-8 |
+
+性能设计：ASCII 快速路径、256 字节首字分类查表、fall-through switch 展开续字节处理。遵循 Unicode 17.0 / RFC 3629 规范。
 
 ## 许可证
 
