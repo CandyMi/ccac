@@ -67,3 +67,18 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+# macOS
+.DS_Store
+
+# compiled test/bench binaries (keep sources)
+tests/test_ccac
+tests/test_ccac_robust
+tests/test_ccac_stress
+tests/test_unicode
+bench/bench_ccac
+
+# generated test data
+words.*.txt
+stress_text.txt
+stress_text.txt.pos

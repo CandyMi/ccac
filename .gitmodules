@@ -1,0 +1,3 @@
+[submodule "3rd/ccalg"]
+	path = 3rd/ccalg
+	url = https://github.com/CandyMi/ccalg.git
