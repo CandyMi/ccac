@@ -93,17 +93,14 @@ int ccac_unicode_to_codepoint(const char *str, int len, uint32_t *val)
    */
   switch (bytes) {
     case 4:
-      if ((p[1] & 0xC0) != 0x80) return 0;
-      if ((p[2] & 0xC0) != 0x80) return 0;
-      if ((p[3] & 0xC0) != 0x80) return 0;
+      if (((p[1] ^ 0x80) | (p[2] ^ 0x80) | (p[3] ^ 0x80)) & 0xC0) return 0;
       code  = (uint32_t)(p[0] & 0x07) << 18;
       code |= (uint32_t)(p[1] & 0x3F) << 12;
       code |= (uint32_t)(p[2] & 0x3F) << 6;
       code |= (uint32_t)(p[3] & 0x3F);
       break;
     case 3:
-      if ((p[1] & 0xC0) != 0x80) return 0;
-      if ((p[2] & 0xC0) != 0x80) return 0;
+      if (((p[1] ^ 0x80) | (p[2] ^ 0x80)) & 0xC0) return 0;
       code  = (uint32_t)(p[0] & 0x0F) << 12;
       code |= (uint32_t)(p[1] & 0x3F) << 6;
       code |= (uint32_t)(p[2] & 0x3F);
