@@ -33,7 +33,7 @@ void test_invalid_utf8_find(void) {
   ccac_build(&ac, "abc\n", 4, '\n');
   const char bad[] = "ab\xff" "cd";
   int n = 0;
-  ccac_find(&ac, bad, sizeof(bad)-1, NULL, &n);
+  ccac_match(&ac, bad, sizeof(bad)-1, NULL, &n);
   ccac_destroy(&ac);
   T(1);  /* must not crash */
 }
@@ -56,7 +56,7 @@ void test_long_word(void) {
   memset(text, 'x', 400);
   text[400] = '\0';
   int n=4; ccac_match_t m[4];
-  ccac_find(&ac, text, 400, m, &n);
+  ccac_match(&ac, text, 400, m, &n);
   T(n >= 1);  /* should find overlapping matches */
   ccac_destroy(&ac);
 }
@@ -79,7 +79,7 @@ void test_wide_root(void) {
     char needle[8];
     sprintf(needle, "%03d", i);
     int n=0;
-    ccac_find(&ac, needle, 3, NULL, &n);
+    ccac_match(&ac, needle, 3, NULL, &n);
     T(n == 1);
   }
   ccac_destroy(&ac);
@@ -103,7 +103,7 @@ void test_deep_prefix(void) {
   /* search "abcdefghij" — should find all 10 */
   const char *t = "abcdefghij";
   int n=16; ccac_match_t m[16];
-  ccac_find(&ac, t, (size_t)strlen(t), m, &n);
+  ccac_match(&ac, t, (size_t)strlen(t), m, &n);
   T(n == 10);
   ccac_destroy(&ac);
 }
@@ -127,7 +127,7 @@ void test_rebuild_cycle(void) {
     /* verify */
     char needle[16]; sprintf(needle, "add%d_2", cyc);
     int n=0;
-    ccac_find(&ac, needle, strlen(needle), NULL, &n);
+    ccac_match(&ac, needle, strlen(needle), NULL, &n);
     T(n == 1);
   }
   ccac_destroy(&ac);
@@ -155,7 +155,7 @@ void test_zero_len(void) {
   ccac_init(&ac);
   ccac_build(&ac, "abc\n", 4, '\n');
   int n = 99;
-  ccac_find(&ac, "", 0, NULL, &n);
+  ccac_match(&ac, "", 0, NULL, &n);
   T(n == 0);
   ccac_destroy(&ac);
 
@@ -174,9 +174,9 @@ void test_null_safety(void) {
   ccac_t ac; ccac_init(&ac); ccac_build(&ac, "x\n",2,'\n');
   int n;
 
-  T(!ccac_find(NULL, "x", 1, NULL, &n));
-  T(!ccac_find(&ac, NULL, 1, NULL, &n));
-  T(!ccac_find(&ac, "x", 1, NULL, NULL));
+  T(!ccac_match(NULL, "x", 1, NULL, &n));
+  T(!ccac_match(&ac, NULL, 1, NULL, &n));
+  T(!ccac_match(&ac, "x", 1, NULL, NULL));
   T(!ccac_build(NULL, "x", 1, '\n'));
   T(!ccac_build(&ac, NULL, 1, '\n'));
   T(!ccac_add(NULL, "x", 1, NULL));
@@ -201,13 +201,13 @@ void test_match_overflow(void) {
 
   /* request only 3 matches */
   ccac_match_t m[3]; int n = 3;
-  ccac_find(&ac, text, 100, m, &n);
+  ccac_match(&ac, text, 100, m, &n);
   T(n == 3);
   T(m[0].e - m[0].s == 1);
 
   /* test mode (NULL) */
   n = 0;
-  ccac_find(&ac, text, 100, NULL, &n);
+  ccac_match(&ac, text, 100, NULL, &n);
   T(n == 1);  /* existence only */
 
   ccac_destroy(&ac);
@@ -228,7 +228,7 @@ void test_single_char_dict(void) {
   /* text containing all letters */
   const char *t = "abcdefghijklmnopqrstuvwxyz";
   ccac_match_t m[32]; int n=32;
-  ccac_find(&ac, t, strlen(t), m, &n);
+  ccac_match(&ac, t, strlen(t), m, &n);
   T(n == 26);
 
   ccac_destroy(&ac);
@@ -263,12 +263,12 @@ void test_fuzz(void) {
 
     /* test mode */
     int hit = 0;
-    ccac_find(&ac, text, (size_t)tl, NULL, &hit);
+    ccac_match(&ac, text, (size_t)tl, NULL, &hit);
 
     /* record up to 100 matches */
     ccac_match_t *m = (ccac_match_t *)malloc(100*sizeof(*m));
     int n = 100;
-    ccac_find(&ac, text, (size_t)tl, m, &n);
+    ccac_match(&ac, text, (size_t)tl, m, &n);
 
     /* validate every match */
     for (int i=0; i<n; i++) {

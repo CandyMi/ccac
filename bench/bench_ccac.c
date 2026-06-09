@@ -96,7 +96,7 @@ static double bench_ccac(const char *dict, size_t dict_len,
 
   int n = 2000000000;
   t0 = now_ms();
-  ccac_find(&ac, text, text_len, NULL, &n);
+  ccac_match(&ac, text, text_len, NULL, &n);
   double t_search = now_ms() - t0;
 
   *out_matches = n;
@@ -310,7 +310,7 @@ int main(int argc, char **argv) {
   printf("  ccac vs naive(full)          : %.0f× faster\n",
          naive_proj / t_ccac);
   if (t_pcre2 > 0) {
-    double pcre2_proj = t_pcre2 * ((double)text_len / sub_text_len);
+    // double pcre2_proj = t_pcre2 * ((double)text_len / sub_text_len);
     printf("  ccac vs PCRE2(capped text)   : %.1f× faster\n",
            t_pcre2 / t_ccac);
   }

@@ -24,7 +24,7 @@
 **
 **    // search
 **    ccac_match_t matches[64]; int n = 64;
-**    ccac_find(&ac, text, text_len, matches, &n);
+**    ccac_match(&ac, text, text_len, matches, &n);
 **    for (int i = 0; i < n; i++)
 **      printf("match [%zu, %zu): %.*s\n", matches[i].s, matches[i].e,
 **             (int)(matches[i].e - matches[i].s), text + matches[i].s);
@@ -75,10 +75,10 @@ extern "C" {
  * @note All fields are internal — users only interact via the public API.
  */
 typedef struct ccac_word_node {
-  uint32_t              len;   /**< 0 = internal, >0 = terminal (UTF-8 byte length) */
-  uint32_t             word;   /**< UCS-4 codepoint at this node */
-  cchashmap_t           map;   /**< children keyed by codepoint */
-  cchashmap_node_t     node;   /**< intrusive link in parent's cchashmap */
+  uint32_t                len; /**< 0 = internal, >0 = terminal (UTF-8 byte length) */
+  uint32_t               word; /**< UCS-4 codepoint at this node */
+  cchashmap_t             map; /**< children keyed by codepoint */
+  cchashmap_node_t       node; /**< intrusive link in parent's cchashmap */
   struct ccac_word_node *fail; /**< failure link (reference only, not owned) */
   struct ccac_word_node *next; /**< linked-list link for cleanup tracking */
 } ccac_word_node_t;
@@ -97,7 +97,7 @@ typedef struct ccac {
 } ccac_t;
 
 /**
- * Match result produced by @ref ccac_find.
+ * Match result produced by @ref ccac_match.
  *
  * `s` and `e` are UTF-8 byte offsets — `text + s` is the first byte of
  * the matched word and `e - s` is its byte length.
@@ -332,7 +332,7 @@ CCAC_INLINE bool ccac_build(ccac_t *ac, const char *words, size_t len,
  * Add a single word to an already-built automaton.
  *
  * Inserts the word into the trie and rebuilds all failure links.
- * This is safe to call between @ref ccac_find invocations.
+ * This is safe to call between @ref ccac_match invocations.
  *
  * @param ac    built automaton
  * @param word  UTF-8 encoded word
@@ -377,7 +377,7 @@ CCAC_INLINE bool ccac_add(ccac_t *ac, const char *word, size_t len,
  * @param nmatch   [in] capacity of `matches`  [out] matches written
  * @return         true on success, false on invalid arguments
  */
-CCAC_INLINE bool ccac_find(ccac_t *ac, const char *text, size_t len,
+CCAC_INLINE bool ccac_match(ccac_t *ac, const char *text, size_t len,
                            ccac_match_t *matches, int *nmatch) {
   if (!ac || !ac->root || !text || !nmatch || *nmatch < 0) return false;
   if (len == 0) { *nmatch = 0; return true; }
@@ -436,7 +436,7 @@ done:
 
 CCAC_INLINE bool ccac_exists(ccac_t *ac, const char *s, size_t len) {
   int nmatchs = 2; ccac_match_t matchs[2];
-  return ccac_find(ac, s, len, matchs, &nmatchs) && nmatchs > 0;
+  return ccac_match(ac, s, len, matchs, &nmatchs) && nmatchs > 0;
 }
 
 #ifdef __cplusplus

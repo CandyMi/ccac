@@ -39,7 +39,7 @@ int main() {
     const char *text = "This text contains a sensitive word.";
     ccac_match_t matches[16];
     int n = 16;
-    ccac_find(&ac, text, strlen(text), matches, &n);
+    ccac_match(&ac, text, strlen(text), matches, &n);
 
     for (int i = 0; i < n; i++) {
         printf("match [%zu, %zu): %.*s\n",
@@ -107,9 +107,9 @@ cc -std=c99 -O2 -Wall -Wextra $INC -o test_ccac_stress tests/test_ccac_stress.c
 | `ccac_destroy(ac)` | Release all resources |
 | `ccac_build(ac, words, len, delim)` | Bulk-build from a delimited word list |
 | `ccac_add(ac, word, len, &dup)` | Add a single word dynamically |
-| `ccac_find(ac, text, len, matches, &nmatch)` | Search text for dictionary words |
+| `ccac_match(ac, text, len, matches, &nmatch)` | Search text for dictionary words |
 
-**`ccac_find` modes:**
+**`ccac_match` modes:**
 
 | `matches` | Behavior |
 |-----------|----------|
@@ -203,12 +203,13 @@ flowchart TD
 
     H -.->|"fail"| R
     S -.->|"fail"| R
-    HE -.->|"fail"| SHE
+    HE -.->|"fail"| R
     SH -.->|"fail"| H
     SHE -.->|"fail"| HE
-    HIS -.->|"fail"| SHE
-    HER -.->|"fail"| S
-    HERS -.->|"fail"| SHE
+    HIS -.->|"fail"| S
+    HI -.->|"fail"| R
+    HER -.->|"fail"| R
+    HERS -.->|"fail"| S
 
     style HE fill:#e44,stroke:#333,color:#fff
     style SHE fill:#e44,stroke:#333,color:#fff
@@ -245,6 +246,7 @@ sequenceDiagram
     T->>AC: pos=5 's'
     AC-->>AC: her→'s' ✦ hers (terminal!)
     M-->>M: ✅ [2,6) = "hers"
+    AC-->>AC: hers→fail→s (non-terminal, stop)
 ```
 
 ### Trie structure

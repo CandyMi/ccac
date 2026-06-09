@@ -104,11 +104,11 @@ void ccac_destroy(ccac_t *ac);
 bool ccac_build  (ccac_t *ac, const char *words, size_t len, int delimiter);
 bool ccac_add    (ccac_t *ac, const char *word, size_t len, bool *dup);
 
-bool ccac_find   (ccac_t *ac, const char *text, size_t len,
+bool ccac_match (ccac_t *ac, const char *text, size_t len,
                   ccac_match_t *matches, int *nmatch);
 ```
 
-#### ccac_find modes
+#### ccac_match modes
 
 | `matches` | Behavior |
 | --- | --- |

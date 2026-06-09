@@ -39,7 +39,7 @@ int main() {
     const char *text = "这是一个包含敏感词的测试文本";
     ccac_match_t matches[16];
     int n = 16;
-    ccac_find(&ac, text, strlen(text), matches, &n);
+    ccac_match(&ac, text, strlen(text), matches, &n);
 
     for (int i = 0; i < n; i++) {
         printf("匹配 [%zu, %zu): %.*s\n",
@@ -107,9 +107,9 @@ cc -std=c99 -O2 -Wall -Wextra $INC -o test_ccac_stress tests/test_ccac_stress.c
 | `ccac_destroy(ac)` | 释放所有资源 |
 | `ccac_build(ac, words, len, delim)` | 从分隔符词表批量构建 |
 | `ccac_add(ac, word, len, &dup)` | 动态追加单个词 |
-| `ccac_find(ac, text, len, matches, &nmatch)` | 搜索文本 |
+| `ccac_match(ac, text, len, matches, &nmatch)` | 搜索文本 |
 
-`ccac_find` 两种模式：
+`ccac_match` 两种模式：
 
 | `matches` | 行为 |
 |-----------|------|
@@ -203,12 +203,13 @@ flowchart TD
 
     H -.->|"fail"| R
     S -.->|"fail"| R
-    HE -.->|"fail"| SHE
+    HE -.->|"fail"| R
     SH -.->|"fail"| H
     SHE -.->|"fail"| HE
-    HIS -.->|"fail"| SHE
-    HER -.->|"fail"| S
-    HERS -.->|"fail"| SHE
+    HIS -.->|"fail"| S
+    HI -.->|"fail"| R
+    HER -.->|"fail"| R
+    HERS -.->|"fail"| S
 
     style HE fill:#e44,stroke:#333,color:#fff
     style SHE fill:#e44,stroke:#333,color:#fff
@@ -245,6 +246,7 @@ sequenceDiagram
     T->>AC: pos=5 's'
     AC-->>AC: her→'s' ✦ hers (终端!)
     M-->>M: ✅ [2,6) = "hers"
+    AC-->>AC: hers→fail→s (非终端，停止)
 ```
 
 ### Trie 结构

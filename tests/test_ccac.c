@@ -22,7 +22,7 @@ static int passed, failed;
 /* ── helper ───────────────────────────────────────────────────────────── */
 static bool has_match(ccac_t *ac, const char *text, size_t len) {
   int n = 0;
-  ccac_find(ac, text, len, NULL, &n);
+  ccac_match(ac, text, len, NULL, &n);
   return n > 0;
 }
 
@@ -113,7 +113,7 @@ TEST(find_exact_single) {
   ccac_build(&ac, "hello\n", 6, '\n');
   const char *t = "hello";
   ccac_match_t m[4]; int n = 4;
-  ccac_find(&ac, t, strlen(t), m, &n);
+  ccac_match(&ac, t, strlen(t), m, &n);
   ASSERT(n == 1);
   ASSERT(m[0].s == 0 && m[0].e == 5);
   ASSERT(memcmp(t + m[0].s, "hello", 5) == 0);
@@ -125,7 +125,7 @@ TEST(find_multiple_non_overlapping) {
   ccac_build(&ac, "ab\ncd\n", 6, '\n');
   const char *t = "abXcd";
   ccac_match_t m[4]; int n = 4;
-  ccac_find(&ac, t, strlen(t), m, &n);
+  ccac_match(&ac, t, strlen(t), m, &n);
   ASSERT(n == 2);
   ccac_destroy(&ac);
 }
@@ -137,7 +137,7 @@ TEST(find_overlapping) {
   ccac_build(&ac, "ab\nbc\n", 6, '\n');
   const char *t = "abc";
   ccac_match_t m[4]; int n = 4;
-  ccac_find(&ac, t, strlen(t), m, &n);
+  ccac_match(&ac, t, strlen(t), m, &n);
   ASSERT(n == 2);  /* "ab" at [0,2), "bc" at [1,3) */
   int found_ab = 0, found_bc = 0;
   for (int i = 0; i < n; i++) {
@@ -155,7 +155,7 @@ TEST(find_fail_chain) {
   ccac_build(&ac, "he\nshe\nhis\nhers\n", 16, '\n');
   const char *t = "ushers";
   ccac_match_t m[8]; int n = 8;
-  ccac_find(&ac, t, strlen(t), m, &n);
+  ccac_match(&ac, t, strlen(t), m, &n);
   /* expect: she[1,4), he[2,4), hers[2,6) */
   ASSERT(n == 3);
   int found_she = 0, found_he = 0, found_hers = 0;
@@ -175,7 +175,7 @@ TEST(find_truncation) {
   ccac_build(&ac, "a\nb\nc\nd\ne\n", 10, '\n');
   const char *t = "abcde";
   ccac_match_t m[3]; int n = 3;  /* only room for 3 */
-  ccac_find(&ac, t, strlen(t), m, &n);
+  ccac_match(&ac, t, strlen(t), m, &n);
   ASSERT(n == 3);  /* truncated */
   ccac_destroy(&ac);
 }
@@ -185,10 +185,10 @@ TEST(find_test_mode) {
   ccac_build(&ac, "hello\nworld\n", 12, '\n');
   /* test mode: NULL matches → existence check */
   int n = 0;
-  ccac_find(&ac, "hello world", 11, NULL, &n);
+  ccac_match(&ac, "hello world", 11, NULL, &n);
   ASSERT(n == 1);  /* found at least one */
   n = 0;
-  ccac_find(&ac, "xyz", 3, NULL, &n);
+  ccac_match(&ac, "xyz", 3, NULL, &n);
   ASSERT(n == 0);  /* nothing found */
   ccac_destroy(&ac);
 }
@@ -201,7 +201,7 @@ TEST(utf8_chinese_single) {
   ccac_build(&ac, d, strlen(d), '\n');
   const char *t = "这是一个测试文本";
   ccac_match_t m[4]; int n = 4;
-  ccac_find(&ac, t, strlen(t), m, &n);
+  ccac_match(&ac, t, strlen(t), m, &n);
   ASSERT(n == 1);
   ASSERT(memcmp(t + m[0].s, "测试", (size_t)(m[0].e - m[0].s)) == 0);
   ccac_destroy(&ac);
@@ -213,7 +213,7 @@ TEST(utf8_chinese_multiple) {
   ccac_build(&ac, d, strlen(d), '\n');
   const char *t = "这是敏感词汇需要过滤处理";
   ccac_match_t m[8]; int n = 8;
-  ccac_find(&ac, t, strlen(t), m, &n);
+  ccac_match(&ac, t, strlen(t), m, &n);
   ASSERT(n == 3);
   ccac_destroy(&ac);
 }
@@ -225,7 +225,7 @@ TEST(utf8_chinese_overlap) {
   ccac_build(&ac, d, strlen(d), '\n');
   const char *t = "我是中国人";
   ccac_match_t m[8]; int n = 8;
-  ccac_find(&ac, t, strlen(t), m, &n);
+  ccac_match(&ac, t, strlen(t), m, &n);
   ASSERT(n == 2);  /* 中国 + 中国人 both found */
   ccac_destroy(&ac);
 }
@@ -244,9 +244,9 @@ TEST(find_null) {
   ccac_t ac; ccac_init(&ac);
   ccac_build(&ac, "hello\n", 6, '\n');
   int n = 10;
-  ASSERT(!ccac_find(NULL, "hello", 5, NULL, &n));
-  ASSERT(!ccac_find(&ac, NULL, 5, NULL, &n));
-  ASSERT(!ccac_find(&ac, "hello", 5, NULL, NULL));
+  ASSERT(!ccac_match(NULL, "hello", 5, NULL, &n));
+  ASSERT(!ccac_match(&ac, NULL, 5, NULL, &n));
+  ASSERT(!ccac_match(&ac, "hello", 5, NULL, NULL));
   ccac_destroy(&ac);
 }
 
@@ -267,7 +267,7 @@ TEST(repeated_pattern) {
   ccac_build(&ac, "ab\n", 3, '\n');
   const char *t = "abababab";
   ccac_match_t m[8]; int n = 8;
-  ccac_find(&ac, t, strlen(t), m, &n);
+  ccac_match(&ac, t, strlen(t), m, &n);
   ASSERT(n == 4);
   for (int i = 0; i < n; i++)
     ASSERT(m[i].e - m[i].s == 2);

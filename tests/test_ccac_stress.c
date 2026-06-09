@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
   /* first pass: existence check (test mode) */
   int has_match = 0;
   t0 = now_ms();
-  ccac_find(&ac, text, text_len, NULL, &has_match);
+  ccac_match(&ac, text, text_len, NULL, &has_match);
   t1 = now_ms();
   printf("      test mode (any?): %s, %.0f ms\n",
          has_match ? "yes" : "no", (t1 - t0));
@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
   if (!matches) { free(text); ccac_destroy(&ac); return 1; }
 
   t0 = now_ms();
-  ccac_find(&ac, text, text_len, matches, &nm);
+  ccac_match(&ac, text, text_len, matches, &nm);
   t1 = now_ms();
 
   printf("      found: %d matches in %.0f ms (%.1f MB/s)\n",
