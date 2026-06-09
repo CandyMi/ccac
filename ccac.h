@@ -231,14 +231,14 @@ CCAC_INLINE bool ccac_insert_one(ccac_t *ac, const char *word,
 CCAC_INLINE bool ccac_rebuild_fail(ccac_t *ac) {
   if (ac->size == 0) return true;
 
-  /* reset all fail links (root is self-referencing, others → NULL) */
-  for (ccac_word_node_t *n = ac->nlist; n; n = n->next)
-    n->fail = NULL;
-  ac->root->fail = ac->root;
-
-  /* count nodes for exact queue allocation */
+  /* reset all fail links (root is self-referencing, others → NULL)
+     and count nodes for exact queue allocation — single pass */
   size_t node_count = 0;
-  for (ccac_word_node_t *n = ac->nlist; n; n = n->next) node_count++;
+  for (ccac_word_node_t *n = ac->nlist; n; n = n->next) {
+    n->fail = NULL;
+    node_count++;
+  }
+  ac->root->fail = ac->root;
 
   /* BFS queue */
   size_t qcap = node_count < 4 ? 4 : node_count;
