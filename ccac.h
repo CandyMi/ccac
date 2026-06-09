@@ -99,12 +99,14 @@ typedef struct ccac {
 /**
  * Match result produced by @ref ccac_match.
  *
- * `s` and `e` are UTF-8 byte offsets — `text + s` is the first byte of
- * the matched word and `e - s` is its byte length.
+ * Uses the standard `[start, end)` half-open interval:
+ * `s` is the first byte of the matched word; `e` is one past the last
+ * byte, so `e - s` equals the word's UTF-8 byte length.  This allows
+ * direct use with `printf("%.*s", e-s, text+s)` without copying.
  */
 typedef struct ccac_match {
-  size_t s; /**< start byte offset in the original UTF-8 text */
-  size_t e; /**< one-past-the-end byte offset */
+  size_t s; /**< start byte offset (inclusive) */
+  size_t e; /**< end byte offset (exclusive, one past the last byte) */
 } ccac_match_t;
 
 /* ════════════════════════════════════════════════════════════════════════

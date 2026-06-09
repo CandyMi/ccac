@@ -118,11 +118,24 @@ cc -std=c99 -O2 -Wall -Wextra $INC -o test_ccac_stress tests/test_ccac_stress.c
 
 ### 匹配结果
 
+采用标准 `[start, end)` 半开区间：
+- `s` = 匹配词的第一个字节偏移
+- `e` = 匹配词最后一个字节的下一位置（`e - s` = 词长）
+
 ```c
 typedef struct ccac_match {
     size_t s;  // 原文中的起始字节偏移
     size_t e;  // 结束字节偏移 (e - s = 字节长度)
 } ccac_match_t;
+```
+
+```
+// 示例：在 "ushers" 中匹配 "he"
+//   u s h e r s
+//   0 1 2 3 4 5 6
+//       [2   4)     s=2, e=4 → text[2..3] = "he" ✓
+
+printf("%.*s\n", (int)(match.e - match.s), text + match.s);
 ```
 
 ## ccac vs ccac1

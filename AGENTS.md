@@ -84,9 +84,11 @@ UTF-8 text ──► unicode.h ──► UCS-4 codepoints ──► AC automaton
 
 ```c
 typedef struct ccac_match {
-  size_t s;  // start byte offset in original UTF-8 text
-  size_t e;  // one-past-the-end byte offset
+  size_t s;  // start byte offset (inclusive)
+  size_t e;  // end byte offset (exclusive, e-s = word length)
 } ccac_match_t;
+
+// Half-open [s, e) — safe for printf("%.*s", e-s, text+s), no copy needed.
 
 typedef struct ccac {
   ccac_word_node_t *root;   // root trie node (word=0, len=0)

@@ -118,11 +118,24 @@ cc -std=c99 -O2 -Wall -Wextra $INC -o test_ccac_stress tests/test_ccac_stress.c
 
 ### Match result
 
+Uses the standard `[start, end)` half-open interval:
+- `s` = first byte of the matched word
+- `e` = one past the last byte (so `e - s` = word length)
+
 ```c
 typedef struct ccac_match {
     size_t s;  // start byte offset in the original UTF-8 text
     size_t e;  // one-past-the-end byte offset (e - s = byte length)
 } ccac_match_t;
+```
+
+```
+// Example: matching "he" in "ushers"
+//   u s h e r s
+//   0 1 2 3 4 5 6
+//       [2   4)     s=2, e=4 → text[2..3] = "he" ✓
+
+printf("%.*s\n", (int)(match.e - match.s), text + match.s);
 ```
 
 ## ccac vs ccac1
