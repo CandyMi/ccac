@@ -10,7 +10,7 @@ Aho-Corasick multi-pattern keyword matching library — header-only C implementa
 ## Features
 
 - **O(n) search time** — independent of dictionary size, linear in text length only
-- **Native UTF-8** — built-in UCS-4 codec, correct handling of CJK, emoji, and all Unicode planes
+- **Native UTF-8** — UCS-4 codec (via ccalg submodule), correct handling of CJK, emoji, and all Unicode planes
 - **Two backends** — hash-map (`ccac.h`) or red-black tree (`ccac1.h`), ABI-compatible drop-ins
 - **Two search modes** — record mode (collect all matches) and test mode (existence-only check)
 - **Incremental build** — batch `ccac_build` plus dynamic `ccac_add` for live updates
@@ -84,7 +84,7 @@ All intermediate artifacts stay inside `build/`.
 INC="-I. -I3rd/ccalg/include"
 
 # Codec tests
-cc -std=c99 -Wall -Wextra -I. -o test_unicode tests/test_unicode.c && ./test_unicode
+cc -std=c99 -Wall -Wextra $INC -o test_unicode tests/test_unicode.c && ./test_unicode
 
 # Unit tests
 cc -std=c99 -Wall -Wextra $INC -o test_ccac tests/test_ccac.c && ./test_ccac
@@ -155,8 +155,7 @@ Both headers expose **identical** types and function signatures — swap one `#i
 ccac/
 ├── ccac.h           # Variant A: hash-map backend
 ├── ccac1.h          # Variant B: red-black tree backend (ABI-compatible)
-├── unicode.h        # UTF-8 ↔ UCS-4 codec (zero deps)
-├── 3rd/ccalg/       # [git submodule] container library
+├── 3rd/ccalg/       # [git submodule] containers + unicode codec
 ├── CMakeLists.txt   # Build system
 ├── AGENTS.md        # Canonical reference for AI coding agents
 ├── tests/           # Test suite
@@ -189,7 +188,7 @@ ccac/
 
 ```mermaid
 flowchart LR
-    A["UTF-8 Text"] --> B["unicode.h<br/>codec"]
+    A["UTF-8 Text"] --> B["ccunicode.h<br/>codec"]
     B -->|"UCS-4"| C["AC Automaton"]
     D["Dictionary"] --> E["Build Trie"]
     E --> F["Failure Links<br/>(BFS)"]
@@ -270,14 +269,14 @@ Each node stores a single UCS-4 codepoint. Terminal nodes record the original UT
 
 Built in one BFS pass from the root: for each node `v` with child `c` on codepoint `x`, follow `v->fail` until a node with child `x` is found (or root), then set `c->fail` accordingly. Total time: O(number of nodes).
 
-### unicode.h codec
+### ccunicode.h codec (from ccalg)
 
-Self-contained UTF-8 ↔ UCS-4 implementation:
+UTF-8 ↔ UCS-4 implementation from the ccalg submodule (`3rd/ccalg/include/ccunicode.h`):
 
 | Function | Direction |
 |----------|-----------|
-| `ccac_unicode_to_codepoint(str, len, &val)` | UTF-8 → UCS-4 |
-| `ccac_codepoint_to_unicode(val, str, &len)` | UCS-4 → UTF-8 |
+| `ccunicode_to_codepoint(str, len, &val)` | UTF-8 → UCS-4 |
+| `ccunicode_from_codepoint(val, str, &len)` | UCS-4 → UTF-8 |
 
 Performance design: ASCII fast path, 256-byte first-byte classification table, unrolled continuation-byte processing via fall-through switch.
 

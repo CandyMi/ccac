@@ -10,7 +10,7 @@
 ## 特性
 
 - **O(n) 搜索时间** — 与字典大小无关，仅取决于文本长度
-- **原生 UTF-8 支持** — 内置 UCS-4 编解码器，正确处理中文、emoji 等多字节字符
+- **原生 UTF-8 支持** — UCS-4 编解码器（来自 ccalg 子模块），正确处理中文、emoji 等多字节字符
 - **双后端容器** — 哈希表 (`ccac.h`) 或红黑树 (`ccac1.h`)，ABI 兼容可按需替换
 - **两种搜索模式** — 记录模式（收集所有匹配）和检测模式（仅判断是否存在）
 - **增量构建** — 支持 `ccac_build` 批量构建和 `ccac_add` 动态追加词汇
@@ -84,7 +84,7 @@ cmake --install build --prefix /usr/local
 INC="-I. -I3rd/ccalg/include"
 
 # 编解码器测试
-cc -std=c99 -Wall -Wextra -I. -o test_unicode tests/test_unicode.c && ./test_unicode
+cc -std=c99 -Wall -Wextra $INC -o test_unicode tests/test_unicode.c && ./test_unicode
 
 # 单元测试
 cc -std=c99 -Wall -Wextra $INC -o test_ccac tests/test_ccac.c && ./test_ccac
@@ -155,8 +155,7 @@ printf("%.*s\n", (int)(match.e - match.s), text + match.s);
 ccac/
 ├── ccac.h           # 哈希表变体
 ├── ccac1.h          # 红黑树变体（ABI 兼容）
-├── unicode.h        # UTF-8 ↔ UCS-4 编解码器（零依赖）
-├── 3rd/ccalg/       # [git submodule] 第三方容器库
+├── 3rd/ccalg/       # [git submodule] 容器 + unicode 编解码器
 ├── CMakeLists.txt   # 构建系统
 ├── AGENTS.md        # AI Agent 规范参考
 ├── tests/           # 测试套件
@@ -189,7 +188,7 @@ ccac/
 
 ```mermaid
 flowchart LR
-    A["UTF-8 文本"] --> B["unicode.h<br/>编解码器"]
+    A["UTF-8 文本"] --> B["ccunicode.h<br/>编解码器"]
     B -->|"UCS-4"| C["AC 自动机"]
     D["词表"] --> E["构建 Trie"]
     E --> F["失败链接<br/>(BFS)"]
@@ -270,14 +269,14 @@ sequenceDiagram
 
 从根节点一次 BFS 构建：对每个节点 `v` 及其在码点 `x` 上的子节点 `c`，沿 `v->fail` 上溯直到找到含 `x` 子节点的节点（或根），然后设置 `c->fail`。总耗时 O(节点数)。
 
-### unicode.h 编解码器
+### ccunicode.h 编解码器（来自 ccalg）
 
-自包含的 UTF-8 ↔ UCS-4 实现：
+来自 ccalg 子模块的 UTF-8 ↔ UCS-4 实现（`3rd/ccalg/include/ccunicode.h`）：
 
 | 函数 | 方向 |
 |------|------|
-| `ccac_unicode_to_codepoint(str, len, &val)` | UTF-8 → UCS-4 |
-| `ccac_codepoint_to_unicode(val, str, &len)` | UCS-4 → UTF-8 |
+| `ccunicode_to_codepoint(str, len, &val)` | UTF-8 → UCS-4 |
+| `ccunicode_from_codepoint(val, str, &len)` | UCS-4 → UTF-8 |
 
 性能设计：ASCII 快速路径、256 字节首字分类查表、fall-through switch 展开续字节处理。遵循 Unicode 17.0 / RFC 3629 规范。
 

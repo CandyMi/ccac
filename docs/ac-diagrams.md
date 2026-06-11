@@ -4,7 +4,7 @@
 
 ```mermaid
 flowchart LR
-    A["UTF-8 文本"] --> B["unicode.h<br/>编解码器"]
+    A["UTF-8 文本"] --> B["ccunicode.h<br/>编解码器"]
     B -->|"UCS-4 码点"| C["AC 自动机"]
     D["词表"] --> E["Trie 构建"]
     E --> F["失败链接<br/>(BFS)"]
@@ -138,7 +138,7 @@ flowchart TB
     end
 
     subgraph 搜索阶段
-        D["文本 ushers"] --> E["unicode.h<br/>逐码点解码"]
+        D["文本 ushers"] --> E["ccunicode.h<br/>逐码点解码"]
         E --> F["AC 状态转移<br/>goto + fail 链"]
         F --> G["输出链收集<br/>沿 fail 上溯"]
     end

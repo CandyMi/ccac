@@ -53,7 +53,7 @@
 /* ── child-node container: ccmap (red-black tree) ────────────────────── */
 
 #include "ccmap.h"
-#include "unicode.h"
+#include "ccunicode.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -199,7 +199,7 @@ CCAC_INLINE bool ccac_insert_one(ccac_t *ac, const char *word,
 
   while (cp < end) {
     uint32_t codepoint;
-    int n = ccac_unicode_to_codepoint(cp, (int)(end - cp), &codepoint);
+    int n = ccunicode_to_codepoint(cp, (int)(end - cp), &codepoint);
     if (n <= 0) return false;
     cp += n;
 
@@ -388,7 +388,7 @@ CCAC_INLINE bool ccac_match(ccac_t *ac, const char *text, size_t len,
 
   while (byte_pos < len) {
     uint32_t codepoint;
-    int n = ccac_unicode_to_codepoint(text + byte_pos, (int)(len - byte_pos), &codepoint);
+    int n = ccunicode_to_codepoint(text + byte_pos, (int)(len - byte_pos), &codepoint);
     if (n <= 0) break;
 
     /* follow fail links until we find a child or reach root */

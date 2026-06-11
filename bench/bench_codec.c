@@ -1,5 +1,5 @@
 /*
-**  unicode.h vs utf8proc — codec performance comparison
+**  ccunicode.h vs utf8proc — codec performance comparison
 **
 **  Build:
 **    cc -std=c99 -O2 -I. -I3rd/ccalg/include -I3rd/utf8proc \
@@ -12,7 +12,7 @@
 #include <stdbool.h>
 #include <time.h>
 
-#include "unicode.h"
+#include "ccunicode.h"
 #include "utf8proc.h"
 
 /* ── timing ───────────────────────────────────────────────────────────── */
@@ -68,13 +68,13 @@ static bench_result_t bench_decode(const char *name,
   bench_result_t r = {0};
   r.iterations = 0;
 
-  /* unicode.h */
+  /* ccunicode.h */
   t0 = now_ms();
   for (int round = 0; round < rounds; round++) {
     size_t pos = 0;
     while (pos < text_len) {
       uint32_t cp;
-      int n = ccac_unicode_to_codepoint(text + pos, (int)(text_len - pos), &cp);
+      int n = ccunicode_to_codepoint(text + pos, (int)(text_len - pos), &cp);
       if (n <= 0) break;
       pos += (size_t)n;
       r.iterations++;
@@ -101,7 +101,7 @@ static bench_result_t bench_decode(const char *name,
   t1 = now_ms();
   r.utf8proc_ms = t1 - t0;
 
-  printf("  %-12s  unicode.h %8.2f ms  |  utf8proc %8.2f ms  |  ratio %.2f×\n",
+  printf("  %-12s  ccunicode.h %8.2f ms  |  utf8proc %8.2f ms  |  ratio %.2f×\n",
          name, r.us_ms, r.utf8proc_ms, r.utf8proc_ms / r.us_ms);
   return r;
 }
@@ -115,13 +115,13 @@ static bench_result_t bench_encode(const char *name,
   bench_result_t r = {0};
   volatile int sink;
 
-  /* unicode.h */
+  /* ccunicode.h */
   t0 = now_ms();
   for (int round = 0; round < rounds; round++) {
     for (uint32_t cp = start; cp <= end; cp++) {
       if (cp >= 0xD800 && cp <= 0xDFFF) continue;
       char buf[4]; int len;
-      ccac_codepoint_to_unicode(cp, buf, &len);
+      ccunicode_from_codepoint(cp, buf, &len);
       sink = (unsigned char)buf[0];
     }
   }
@@ -143,7 +143,7 @@ static bench_result_t bench_encode(const char *name,
   r.utf8proc_ms = t1 - t0;
   (void)sink;
 
-  printf("  %-12s  unicode.h %8.2f ms  |  utf8proc %8.2f ms  |  ratio %.2f×\n",
+  printf("  %-12s  ccunicode.h %8.2f ms  |  utf8proc %8.2f ms  |  ratio %.2f×\n",
          name, r.us_ms, r.utf8proc_ms,
          r.us_ms > 0 ? r.utf8proc_ms / r.us_ms : 0);
   return r;
@@ -158,8 +158,8 @@ int main(void) {
   char *text = (char *)malloc(cap + 1);
   if (!text) return 1;
 
-  printf("=== unicode.h vs utf8proc — codec benchmark ===\n\n");
-  printf("  unicode.h version: self-contained (Unicode 17.0 / RFC 3629)\n");
+  printf("=== ccunicode.h vs utf8proc — codec benchmark ===\n\n");
+  printf("  ccunicode.h version: self-contained (Unicode 17.0 / RFC 3629)\n");
   printf("  utf8proc version : %s\n\n", utf8proc_version());
 
   /* ── decode ─────────────────────────────────────────────────────── */
@@ -183,7 +183,7 @@ int main(void) {
   bench_encode("Full range",    0, 0x10FFFF, 3);
 
   printf("\n");
-  printf("  Ratio > 1.0 = unicode.h is faster\n");
+  printf("  Ratio > 1.0 = ccunicode.h is faster\n");
   printf("  Ratio < 1.0 = utf8proc is faster\n");
 
   free(text);

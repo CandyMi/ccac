@@ -12,8 +12,8 @@
 - **License:** BSD 3-Clause
 - **Author:** CandyMi
 - **Repository:** [github.com/CandyMi/ccac](https://github.com/CandyMi/ccac)
-- **No build system.** Every header is self-contained; `#include` and use.
-- **Core traits:** O(n) search time independent of dictionary size, UTF-8 natively supported via own `unicode.h`, two container backends (hashmap vs red-black tree).
+- **Header-only.** No build system required to use — `#include` and go. CMake provided for tests + benchmarks.
+- **Core traits:** O(n) search time independent of dictionary size, UTF-8 natively supported via ccalg's `ccunicode.h`, two container backends (hashmap vs red-black tree).
 
 ---
 
@@ -23,12 +23,13 @@
 ccac/
 ├── ccac.h           # Variant A: cchashmap-backed automaton
 ├── ccac1.h          # Variant B: ccmap-backed automaton (ABI-compatible drop-in)
-├── unicode.h        # Own UTF-8 ↔ UCS-4 codec (zero external dep)
-├── 3rd/ccalg/       # Git submodule — container library
-│   └── include/
-│       ├── cchashmap.h
-│       ├── ccmap.h
-│       └── ccvector.h
+├── 3rd/ccalg/       # Git submodule — containers + unicode codec
+│   ├── include/
+│   │   ├── cchashmap.h
+│   │   ├── ccmap.h
+│   │   ├── ccunicode.h
+│   │   └── ccvector.h
+│   └── ...
 ├── AGENTS.md        # This file — canonical design spec & API reference
 ├── README.md        # English README (GitHub default)
 ├── README.zh.md     # Chinese README
@@ -52,8 +53,7 @@ ccac/
 | --- | --- |
 | [ccac.h](ccac.h) | Aho-Corasick automaton backed by `cchashmap` (chained hash map) |
 | [ccac1.h](ccac1.h) | Aho-Corasick automaton backed by `ccmap` (red-black tree) |
-| [unicode.h](unicode.h) | UTF-8 ↔ UCS-4 codec — fast-path ASCII, lookup-table first byte, unrolled switch |
-| [3rd/ccalg](https://github.com/CandyMi/ccalg) | Git submodule — provides `cchashmap.h`, `ccmap.h`, `ccvector.h` |
+| [3rd/ccalg](https://github.com/CandyMi/ccalg) | Git submodule — provides `cchashmap.h`, `ccmap.h`, `ccunicode.h`, `ccvector.h` |
 
 ---
 
@@ -73,11 +73,11 @@ The choice is a compile-time decision — pick one header and `#include` it.
 ### Data flow
 
 ```
-UTF-8 text ──► unicode.h ──► UCS-4 codepoints ──► AC automaton ──► matches
-                  │                                      │
-                  │  ccac_unicode_to_codepoint()          │  trie node = codepoint
-                  │  ccac_codepoint_to_utf8()             │  child lookup via cchashmap/ccmap
-                  │                                      │  fail links via BFS
+UTF-8 text ──► ccunicode.h ──► UCS-4 codepoints ──► AC automaton ──► matches
+                      │                                            │
+                      │  ccunicode_to_codepoint()                  │  trie node = codepoint
+                      │  ccunicode_from_codepoint()                │  child lookup via cchashmap/ccmap
+                      │                                            │  fail links via BFS
 ```
 
 ### Public types
@@ -117,20 +117,20 @@ bool ccac_match (ccac_t *ac, const char *text, size_t len,
 | `!= NULL` | Record mode: writes up to `*nmatch` hits, stops at capacity |
 | `== NULL` | Test mode: returns on first match, `*nmatch` = 1 if found, 0 if not |
 
-### unicode.h codec
+### ccunicode.h codec (from ccalg)
 
-Own UTF-8 ↔ UCS-4 implementation with no external dependencies:
+UTF-8 ↔ UCS-4 implementation from the ccalg submodule (`3rd/ccalg/include/ccunicode.h`):
 
 | Function | Direction | Return |
 | --- | --- | --- |
-| `ccac_unicode_to_codepoint(str, len, &val)` | UTF-8 → UCS-4 | Bytes consumed (1–4), or 0 on error |
-| `ccac_codepoint_to_utf8(val, str, &len)` | UCS-4 → UTF-8 | `true` on success |
+| `ccunicode_to_codepoint(str, len, &val)` | UTF-8 → UCS-4 | Bytes consumed (1–4), or 0 on error |
+| `ccunicode_from_codepoint(val, str, &len)` | UCS-4 → UTF-8 | `true` on success |
 
 Design:
 - ASCII fast path returns immediately without touching the lookup table
 - 256-byte first-byte classification table (eliminates if-else chain)
 - Unrolled switch with fall-through for continuation byte processing
-- Portable fallthrough macro (`CCAC_FALLTHROUGH`) for GCC/Clang/MSVC
+- Portable fallthrough macro (`ccunicode_fallthrough`) for GCC/Clang/MSVC
 
 ### Internal: trie node
 
@@ -169,22 +169,20 @@ Time: O(total nodes).
 
 Each variant header includes:
 - `<stdint.h>`, `<stddef.h>`, `<stdbool.h>`, `<stdlib.h>`, `<string.h>`
-- `unicode.h`, `<container>.h`, `<ccvector.h>` (if hashmap)
+- `ccunicode.h` (via `3rd/ccalg/include/`), `<container>.h` (cchashmap or ccmap)
 
 ---
 
 ## Dependency graph
 
 ```
-ccac.h ──────► unicode.h
+ccac.h ──────► 3rd/ccalg/include/ccunicode.h
   │
-  └──► 3rd/ccalg/include/cchashmap.h ──► ccvector.h
+  └──► 3rd/ccalg/include/cchashmap.h       (standalone, bucket array inline)
 
-ccac1.h ─────► unicode.h
+ccac1.h ─────► 3rd/ccalg/include/ccunicode.h
   │
   └──► 3rd/ccalg/include/ccmap.h        (standalone, no allocation)
-
-unicode.h     (standalone, no deps beyond C stdlib)
 ```
 
 ### Initial checkout
@@ -231,7 +229,7 @@ All intermediate artifacts (objects, test binaries, generated data) stay inside 
 INC="-I. -I3rd/ccalg/include"   # ccalg headers from submodule
 
 # Codec tests (285 assertions)
-cc -std=c99 -Wall -Wextra -I. -o test_unicode tests/test_unicode.c && ./test_unicode
+cc -std=c99 -Wall -Wextra $INC -o test_unicode tests/test_unicode.c && ./test_unicode
 
 # Basic (46 assertions)
 cc -std=c99 -Wall -Wextra $INC -o test_ccac tests/test_ccac.c && ./test_ccac
@@ -254,6 +252,7 @@ cc -std=c99 -O2 $INC -o bench_ccac bench/bench_ccac.c -lpcre2-8
 
 | Test File | Assertions |
 | --- | --- |
+| `tests/test_unicode.c` | 285 |
 | `tests/test_ccac.c` | 46 |
 | `tests/test_ccac_robust.c` | ~40,482 |
 | `tests/test_ccac_stress.c` | Recall validation (39,403 embedded words) |
@@ -272,7 +271,7 @@ cc -std=c99 -O2 $INC -o bench_ccac bench/bench_ccac.c -lpcre2-8
 
 - **AGENTS.md** is the canonical reference — keep it in sync with header changes.
 - **Macro prefixes are per-header.** `CCAC_` for ccac internals, `CCMAP_` for ccmap, etc.
-- **unicode.h is self-contained.** No dependencies beyond C stdlib.
+- **unicode codec** is provided by ccalg's `ccunicode.h` (via `3rd/ccalg/include/`).
 - **ccac.h and ccac1.h must remain ABI-compatible.** Same types, same signatures.
 - **All public functions are NULL-safe.**
 - **New tests** go in `tests/` with the `test_ccac_*.c` naming pattern.

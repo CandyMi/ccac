@@ -6,10 +6,10 @@
 **
 **  ── Features ──
 **
-**    - UTF-8 input with internal UCS-4 (UTF-32) encoding via unicode.h
+**    - UTF-8 input with internal UCS-4 (UTF-32) encoding via ccunicode.h (from ccalg)
 **    - Custom word delimiter in ccac_build()
 **    - O(n) search time (n = text length), independent of dictionary size
-**    - Header-only, no external dependencies beyond cchashmap + unicode.h
+**    - Header-only, no external dependencies beyond ccalg (cchashmap + ccunicode.h)
 **
 **  ── Usage ──
 **
@@ -55,7 +55,7 @@
 
 #define CCHASHMAP_DEFAULT_SLOT 8
 #include "cchashmap.h"
-#include "unicode.h"
+#include "ccunicode.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -200,7 +200,7 @@ CCAC_INLINE bool ccac_insert_one(ccac_t *ac, const char *word,
 
   while (cp < end) {
     uint32_t codepoint;
-    int n = ccac_unicode_to_codepoint(cp, (int)(end - cp), &codepoint);
+    int n = ccunicode_to_codepoint(cp, (int)(end - cp), &codepoint);
     if (n <= 0) return false;
     cp += n;
 
@@ -251,12 +251,9 @@ CCAC_INLINE bool ccac_rebuild_fail(ccac_t *ac) {
 
   /* Enqueue root's children, fail = root */
   {
-    ccvector_t *bk = &ac->root->map.buckets;
-    size_t ncap = ccvector_capacity(bk);
-    for (size_t i = 0; i < ncap; i++) {
-      cchashmap_node_t **pp = (cchashmap_node_t **)ccvector_at(bk, i);
-      if (!pp || !*pp) continue;
-      cchashmap_node_t *cur = *pp;
+    cchashmap_t *m = &ac->root->map;
+    for (size_t i = 0; i < m->cap; i++) {
+      cchashmap_node_t *cur = m->buckets[i];
       while (cur) {
         ccac_word_node_t *c = CCHASHMAP_CONTAINER(cur, ccac_word_node_t, node);
         c->fail = ac->root;
@@ -268,12 +265,9 @@ CCAC_INLINE bool ccac_rebuild_fail(ccac_t *ac) {
 
   while (qhead < qtail) {
     ccac_word_node_t *v = queue[qhead++];
-    ccvector_t *bk = &v->map.buckets;
-    size_t ncap = ccvector_capacity(bk);
-    for (size_t i = 0; i < ncap; i++) {
-      cchashmap_node_t **pp = (cchashmap_node_t **)ccvector_at(bk, i);
-      if (!pp || !*pp) continue;
-      cchashmap_node_t *cur = *pp;
+    cchashmap_t *m = &v->map;
+    for (size_t i = 0; i < m->cap; i++) {
+      cchashmap_node_t *cur = m->buckets[i];
       while (cur) {
         ccac_word_node_t *c =
             CCHASHMAP_CONTAINER(cur, ccac_word_node_t, node);
@@ -392,7 +386,7 @@ CCAC_INLINE bool ccac_match(ccac_t *ac, const char *text, size_t len,
 
   while (byte_pos < len) {
     uint32_t codepoint;
-    int n = ccac_unicode_to_codepoint(text + byte_pos, (int)(len - byte_pos), &codepoint);
+    int n = ccunicode_to_codepoint(text + byte_pos, (int)(len - byte_pos), &codepoint);
     if (n <= 0) break;
 
     /* follow fail links until we find a child or reach root */
